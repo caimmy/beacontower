@@ -17,8 +17,33 @@
 
 package main
 
-import "fmt"
+import (
+	"github.com/caimmy/beacontower/orm"
+	"fmt"
+)
+
+type UserModel struct {
+	Id			int		`orm:"hhh"`
+	Name 		string	`orm:"eee"`
+	Idcard 		string	`orm:"bbb"`
+	Phone 		string	`orm:"abc"`
+
+	orm.OrmModel
+}
 
 func main() {
-	fmt.Println("hello beacontower")
+	engine, ok := orm.NewEngine("127.0.0.1", 3306, "root", "abcd1234", "gov_info",
+		orm.ENGINE_VER_MYSQL, orm.ENGINE_CODING_UTF8)
+	if ok {
+		ret_set := make([]interface{}, 0)
+		m := orm.Find(&UserModel{}, "SELECT * FROM mgr_user", engine, &ret_set, nil)
+		e := ret_set[0].(UserModel)
+		fmt.Println("*****************************")
+		fmt.Println(e)
+		if m {
+			fmt.Println("ok")
+		}
+	}
+
+
 }
