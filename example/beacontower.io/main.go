@@ -22,28 +22,52 @@ import (
 	"fmt"
 )
 
+type Lotto_User struct {
+	Id			int		`orm:"id"`
+	Name 		string	`orm:"user_name"`
+	Idcard 		string	`orm:"user_weixin"`
+	Phone 		string	`orm:"user_phone"`
+
+	orm.OrmModel
+}
+
 type UserModel struct {
-	Id			int		`orm:"hhh"`
-	Name 		string	`orm:"eee"`
-	Idcard 		string	`orm:"bbb"`
-	Phone 		string	`orm:"abc"`
+	Id			int		`orm:"id"`
+	Name 		string	`orm:"user_name"`
+	Idcard 		string	`orm:"user_weixin"`
+	Phone 		string	`orm:"user_phone"`
 
 	orm.OrmModel
 }
 
 func main() {
-	engine, ok := orm.NewEngine("127.0.0.1", 3306, "root", "abcd1234", "gov_info",
+	engine, ok := orm.NewEngine("127.0.0.1", 3306, "kefu", "abcd1234", "lotto",
 		orm.ENGINE_VER_MYSQL, orm.ENGINE_CODING_UTF8)
 	if ok {
-		ret_set := make([]interface{}, 0)
-		m := orm.Find(&UserModel{}, "SELECT * FROM mgr_user", engine, &ret_set, nil)
-		e := ret_set[0].(UserModel)
-		fmt.Println("*****************************")
-		fmt.Println(e)
-		if m {
-			fmt.Println("ok")
-		}
+		InsertdateT(engine)
 	}
+}
 
+func InsertdateT(engine *orm.OrmEngine) {
+	tU := Lotto_User{Name: "郭德纲", Idcard:"555555555555", Phone:"1234567890"}
+	tU.SetEngine(engine)
+	tU.SetInstance(&tU)
 
+	tU.Save()
+}
+
+func FindT(engine *orm.OrmEngine) {
+	ret_set := make([]interface{}, 0)
+
+	vvv := orm.Find(&UserModel{}, "SELECT * FROM lotto_user WHERE id=?", engine, &ret_set, 6)
+	if len(ret_set) > 0 {
+		for _, v := range ret_set {
+			m := v.(*UserModel)
+			fmt.Println(m)
+		}
+		fmt.Println("----------------------------------")
+	}
+	if vvv {
+		fmt.Println("ok")
+	}
 }

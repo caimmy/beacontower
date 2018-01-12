@@ -61,6 +61,10 @@ func (engine *OrmEngine) Init() error {
 	}
 }
 
+func (engine *OrmEngine) Close() error {
+	return engine.database.Close()
+}
+
 /**
 执行原始sql语句
  */
