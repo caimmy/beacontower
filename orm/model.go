@@ -103,25 +103,25 @@ func (model *OrmModel) parseTablename() {
 /**
 内省数据模型自身的属性、字段信息
  */
-func (model *OrmModel) reflectModelProperties() (map[string] string, error){
+func (model *OrmModel) reflectModelProperties() (map[string] interface{}, error){
 	model_values := reflect.ValueOf(model.instance).Elem()
 	if model_values.IsValid() {
-		ins_data := make(map[string] string)
+		ins_data := make(map[string] interface{})
 		for def_k, def_v := range model.rows_def {
 			if !def_v.ValAutoincreament {
 				field_val := model_values.FieldByName(def_v.ValName)
 				if field_val.IsValid() {
 					switch field_val.Type().Kind() {
 					case reflect.String:
-						ins_data[def_k] = "'" + field_val.String() + "'"
+						ins_data[def_k] = field_val.String()
 					case reflect.Int:
 						fallthrough
 					case reflect.Int64:
-						fallthrough
+						ins_data[def_k] = field_val.Int()
 					case reflect.Float32:
 						fallthrough
 					case reflect.Float64:
-						ins_data[def_k] = field_val.String()
+						ins_data[def_k] = field_val.Float()
 					}
 				} else {
 					return nil, errors.New(fmt.Sprintf("field [%s] reflection is invalid.", def_v.ValName))
@@ -137,9 +137,9 @@ func (model *OrmModel) reflectModelProperties() (map[string] string, error){
 /**
 为sql准备两个列表，一个是字段列表，一个是数据列表。
  */
-func (model *OrmModel) makeSqlColumnsAndValues(properties map[string] string) ([]string, []string, error) {
+func (model *OrmModel) makeSqlColumnsAndValues(properties map[string] interface{}) ([]string, []interface{}, error) {
 	columns_arr 	:= make([]string, 0)
-	values_arr		:= make([]string, 0)
+	values_arr		:= make([]interface{}, 0)
 	for _tk, _tv := range properties {
 		columns_arr = append(columns_arr, _tk)
 		values_arr = append(values_arr, _tv)
@@ -157,7 +157,10 @@ func (model *OrmModel)Insert() (int64, error) {
 		columns, values, err := model.makeSqlColumnsAndValues(reflect_properties)
 		if err == nil {
 			col_sql := strings.Join(columns, ", ")
-			val_sql := strings.Join(values, ",")
+			val_sql := make([]string, len(values)) //strings.Join(values, ",")
+			for vi := 0; vi < len(val_sql); vi++ {
+				val_sql[vi] = "?"
+			}
 
 			construct_buf := bytes.Buffer{}
 			construct_buf.WriteString("INSERT INTO ")
@@ -165,12 +168,10 @@ func (model *OrmModel)Insert() (int64, error) {
 			construct_buf.WriteString(" (")
 			construct_buf.WriteString(col_sql)
 			construct_buf.WriteString(") VALUES (")
-			construct_buf.WriteString(val_sql)
+			construct_buf.WriteString(strings.Join(val_sql, ","))
 			construct_buf.WriteString(")")
 
-			fmt.Println("_______________________________")
-			log.Println(construct_buf.String())
-			return model.db_engine.Raw(construct_buf.String()).Insert()
+			return model.db_engine.Raw(construct_buf.String()).Insert(values...)
 		}
 	}
 
@@ -190,7 +191,6 @@ func (model *OrmModel)Save() (int64, error) {
 	if model.bUpdateRecord {
 		fmt.Println("脏数据，做更新操作！")
 	} else {
-		log.Println("新数据，做插入操作！")
 		return model.Insert()
 	}
 

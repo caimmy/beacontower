@@ -27,7 +27,7 @@ type Lotto_User struct {
 	Id			int		`orm:"id" autoincreament:"1"`
 	Name 		string	`orm:"user_name"`
 	Idcard 		string	`orm:"user_weixin"`
-	Phone 		string	`orm:"user_phone"`
+	Phone 		int	`orm:"user_phone"`
 
 	orm.OrmModel
 }
@@ -51,7 +51,7 @@ func main() {
 }
 
 func InsertdateT(engine *orm.OrmEngine) {
-	tU := Lotto_User{Name: "郭德纲", Idcard:"555555555555", Phone:"1234567890"}
+	tU := Lotto_User{Name: "刘德华", Idcard:"555555555555", Phone:1234567}
 	tU.SetEngine(engine)
 	tU.SetInstance(&tU)
 
