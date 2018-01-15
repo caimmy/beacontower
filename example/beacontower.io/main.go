@@ -20,10 +20,11 @@ package main
 import (
 	"github.com/caimmy/beacontower/orm"
 	"fmt"
+	"log"
 )
 
 type Lotto_User struct {
-	Id			int		`orm:"id"`
+	Id			int		`orm:"id" autoincreament:"1"`
 	Name 		string	`orm:"user_name"`
 	Idcard 		string	`orm:"user_weixin"`
 	Phone 		string	`orm:"user_phone"`
@@ -45,6 +46,7 @@ func main() {
 		orm.ENGINE_VER_MYSQL, orm.ENGINE_CODING_UTF8)
 	if ok {
 		InsertdateT(engine)
+		//FindT(engine)
 	}
 }
 
@@ -53,7 +55,12 @@ func InsertdateT(engine *orm.OrmEngine) {
 	tU.SetEngine(engine)
 	tU.SetInstance(&tU)
 
-	tU.Save()
+	last_id, err := tU.Save()
+	if err == nil {
+		log.Printf("last id got : %d", last_id)
+	} else {
+		log.Println(err)
+	}
 }
 
 func FindT(engine *orm.OrmEngine) {

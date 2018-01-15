@@ -25,6 +25,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"bytes"
 )
 
 func parseModelRows(i interface{}) (map[string] RawDatasetDef, error) {
@@ -35,11 +36,15 @@ func parseModelRows(i interface{}) (map[string] RawDatasetDef, error) {
 			itemField := elem.Field(i)
 			if "OrmModel" != itemField.Name {
 				tagName := itemField.Tag.Get("orm")
+				autoIncreament := false
+				if "1" == itemField.Tag.Get("autoincreament") {
+					autoIncreament = true
+				}
 				setName := tagName
 				if tagName == "" {
 					setName = itemField.Name
 				}
-				rawDatasetDef := RawDatasetDef{itemField.Type.Kind(), itemField.Name}
+				rawDatasetDef := RawDatasetDef{itemField.Type.Kind(), itemField.Name, autoIncreament}
 				retElemDef[setName] = rawDatasetDef
 			}
 		}
@@ -50,8 +55,9 @@ func parseModelRows(i interface{}) (map[string] RawDatasetDef, error) {
 }
 
 type RawDatasetDef struct {
-	ValType 		reflect.Kind
-	ValName			string
+	ValType 			reflect.Kind
+	ValName				string
+	ValAutoincreament	bool
 }
 
 type OrmModel struct {
@@ -73,12 +79,16 @@ func (model *OrmModel) parseModelInfor() {
 }
 
 func (model *OrmModel) parseModelRows() bool {
-	res, err := parseModelRows(model.instance)
-	if err == nil {
-		model.rows_def = res
-		return true
+	if model.rows_def == nil {
+		res, err := parseModelRows(model.instance)
+		if err == nil {
+			model.rows_def = res
+			return true
+		} else {
+			return false
+		}
 	} else {
-		return false
+		return true
 	}
 }
 
@@ -90,32 +100,101 @@ func (model *OrmModel) parseTablename() {
 	}
 }
 
+/**
+内省数据模型自身的属性、字段信息
+ */
+func (model *OrmModel) reflectModelProperties() (map[string] string, error){
+	model_values := reflect.ValueOf(model.instance).Elem()
+	if model_values.IsValid() {
+		ins_data := make(map[string] string)
+		for def_k, def_v := range model.rows_def {
+			if !def_v.ValAutoincreament {
+				field_val := model_values.FieldByName(def_v.ValName)
+				if field_val.IsValid() {
+					switch field_val.Type().Kind() {
+					case reflect.String:
+						ins_data[def_k] = "'" + field_val.String() + "'"
+					case reflect.Int:
+						fallthrough
+					case reflect.Int64:
+						fallthrough
+					case reflect.Float32:
+						fallthrough
+					case reflect.Float64:
+						ins_data[def_k] = field_val.String()
+					}
+				} else {
+					return nil, errors.New(fmt.Sprintf("field [%s] reflection is invalid.", def_v.ValName))
+				}
+			}
+		}
+		return ins_data, nil
+	} else {
+		return nil, errors.New("model reflection is invalid.")
+	}
+}
+
+/**
+为sql准备两个列表，一个是字段列表，一个是数据列表。
+ */
+func (model *OrmModel) makeSqlColumnsAndValues(properties map[string] string) ([]string, []string, error) {
+	columns_arr 	:= make([]string, 0)
+	values_arr		:= make([]string, 0)
+	for _tk, _tv := range properties {
+		columns_arr = append(columns_arr, _tk)
+		values_arr = append(values_arr, _tv)
+	}
+	return columns_arr, values_arr, nil
+}
+
 func (model *OrmModel)Query() sql.Rows  {
 	return sql.Rows{}
 }
 
-func (model *OrmModel)Insert() int64 {
-	return 0
+func (model *OrmModel)Insert() (int64, error) {
+	reflect_properties, e := model.reflectModelProperties()
+	if e == nil {
+		columns, values, err := model.makeSqlColumnsAndValues(reflect_properties)
+		if err == nil {
+			col_sql := strings.Join(columns, ", ")
+			val_sql := strings.Join(values, ",")
+
+			construct_buf := bytes.Buffer{}
+			construct_buf.WriteString("INSERT INTO ")
+			construct_buf.WriteString(model.__tablename__)
+			construct_buf.WriteString(" (")
+			construct_buf.WriteString(col_sql)
+			construct_buf.WriteString(") VALUES (")
+			construct_buf.WriteString(val_sql)
+			construct_buf.WriteString(")")
+
+			fmt.Println("_______________________________")
+			log.Println(construct_buf.String())
+			return model.db_engine.Raw(construct_buf.String()).Insert()
+		}
+	}
+
+	return 0, errors.New("reflectModelProperties failure!")
 }
 
-func (model *OrmModel)Update() int64 {
-	return 0
+func (model *OrmModel)Update() (int64, error) {
+	return 0, nil
 }
 
 func (model *OrmModel)Delete() int64{
 	return 0
 }
 
-func (model *OrmModel)Save() bool {
+func (model *OrmModel)Save() (int64, error) {
 	model.parseModelInfor()
 	if model.bUpdateRecord {
 		fmt.Println("脏数据，做更新操作！")
 	} else {
-		fmt.Println("新数据，做插入操作！")
+		log.Println("新数据，做插入操作！")
+		return model.Insert()
 	}
-	fmt.Println(fmt.Sprintf("%v", model.instance))
 
-	return true
+	return 0, errors.New("Unkown modify operation!")
 }
 
 func (model *OrmModel)SetInstance(v interface{}) {
