@@ -44,9 +44,13 @@ type UserModel struct {
 func main() {
 	engine, ok := orm.NewEngine("127.0.0.1", 3306, "kefu", "abcd1234", "lotto",
 		orm.ENGINE_VER_MYSQL, orm.ENGINE_CODING_UTF8)
+	defer func () {
+		engine.Close()
+	}()
 	if ok {
 		//InsertdateT(engine)
-		FindT(engine)
+		//FindT(engine)
+		DeleteT(engine)
 	}
 }
 
@@ -63,10 +67,23 @@ func InsertdateT(engine *orm.OrmEngine) {
 	}
 }
 
+func DeleteT(engine *orm.OrmEngine) {
+	ret_set := make([]interface{}, 0)
+	vvv := orm.Find(&Lotto_User{}, "SELECT * FROM lotto_user WHERE id=?", engine, &ret_set, 5)
+	log.Println(vvv)
+	if len(ret_set) == 1 {
+		m := ret_set[0].(*Lotto_User)
+		del_id, e := m.Delete()
+		log.Println(e)
+		log.Println(del_id)
+	}
+}
+
 func FindT(engine *orm.OrmEngine) {
 	ret_set := make([]interface{}, 0)
 
-	vvv := orm.Find(&Lotto_User{}, "SELECT * FROM lotto_user WHERE id=?", engine, &ret_set, 3)
+	vvv := orm.Find(&Lotto_User{}, "SELECT * FROM lotto_user WHERE id=?", engine, &ret_set, 5)
+	log.Println(vvv)
 	if len(ret_set) > 0 {
 		m := ret_set[0].(*Lotto_User)
 		fmt.Println(m)
@@ -80,7 +97,5 @@ func FindT(engine *orm.OrmEngine) {
 			log.Println(err)
 		}
 	}
-	if vvv {
-		fmt.Println("ok")
-	}
+
 }

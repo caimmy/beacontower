@@ -62,6 +62,7 @@ func (engine *OrmEngine) Init() error {
 }
 
 func (engine *OrmEngine) Close() error {
+	log.Println("close db connection")
 	return engine.database.Close()
 }
 

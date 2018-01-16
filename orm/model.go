@@ -218,8 +218,17 @@ func (model *OrmModel) update() (int64, error) {
 	return 0, nil
 }
 
-func (model *OrmModel)Delete() int64{
-	return 0
+func (model *OrmModel) Delete() (int64, error) {
+	model.parseModelInfor()
+	pk := model.getPkValue()
+	if pk > 0 {
+		construct_buf := bytes.Buffer{}
+		construct_buf.WriteString("DELETE FROM ")
+		construct_buf.WriteString(model.__tablename__)
+		construct_buf.WriteString(" WHERE id=" + strconv.FormatInt(pk, 10))
+		return model.db_engine.Raw(construct_buf.String()).Exec()
+	}
+	return 0, errors.New("primary key not found! can't delete by ORM.")
 }
 
 func (model *OrmModel)Save() (int64, error) {
@@ -258,7 +267,8 @@ func NewDbModel(m interface{}, engine *OrmEngine) interface{} {
 	return v
 }
 
-func Find(model interface{}, sql string, engine *OrmEngine, ret *[]interface{}, args ...interface{}) bool {
+func Find(model interface{}, sql string, engine *OrmEngine, ret *[]interface{}, args ...interface{}) error {
+	ret_error := errors.New("no data")
 	modelElementDefs, _ := parseModelRows(model)
 	dataset, err := engine.Raw(sql).FetchResults(args...)
 	if err == nil {
@@ -326,18 +336,21 @@ func Find(model interface{}, sql string, engine *OrmEngine, ret *[]interface{}, 
 					*ret = append(*ret, extractInstance.Interface())
 				} else {
 					log.Println(scan_err)
+					ret_error = scan_err
 				}
 
-
+				ret_error = nil
 			}
 
 		} else {
 			log.Println(err)
+			ret_error = err
 		}
 	} else {
 		log.Println(err)
+		ret_error = err
 	}
 
 
-	return true
+	return ret_error
 }
