@@ -45,8 +45,8 @@ func main() {
 	engine, ok := orm.NewEngine("127.0.0.1", 3306, "kefu", "abcd1234", "lotto",
 		orm.ENGINE_VER_MYSQL, orm.ENGINE_CODING_UTF8)
 	if ok {
-		InsertdateT(engine)
-		//FindT(engine)
+		//InsertdateT(engine)
+		FindT(engine)
 	}
 }
 
@@ -66,13 +66,19 @@ func InsertdateT(engine *orm.OrmEngine) {
 func FindT(engine *orm.OrmEngine) {
 	ret_set := make([]interface{}, 0)
 
-	vvv := orm.Find(&UserModel{}, "SELECT * FROM lotto_user WHERE id=?", engine, &ret_set, 6)
+	vvv := orm.Find(&Lotto_User{}, "SELECT * FROM lotto_user WHERE id=?", engine, &ret_set, 3)
 	if len(ret_set) > 0 {
-		for _, v := range ret_set {
-			m := v.(*UserModel)
-			fmt.Println(m)
-		}
+		m := ret_set[0].(*Lotto_User)
+		fmt.Println(m)
+		fmt.Println(m.Name)
 		fmt.Println("----------------------------------")
+		m.Name = m.Name + "<<<"
+		affect_cols, err := m.Save()
+		if err == nil {
+			log.Println("updated : ", affect_cols)
+		} else {
+			log.Println(err)
+		}
 	}
 	if vvv {
 		fmt.Println("ok")

@@ -79,7 +79,7 @@ func (engine *OrmEngine) Raw(sql string) (*OrmEngine) {
  */
 func (engine *OrmEngine) Exec(args ...interface{}) (int64, error) {
 	var ret_affected_rows int64
-	result, err := engine.database.Exec(engine.rawSql, args)
+	result, err := engine.database.Exec(engine.rawSql, args...)
 	if err == nil {
 		af_rows, qe := result.RowsAffected()
 		if qe == nil {

@@ -28,6 +28,11 @@ import (
 	"bytes"
 )
 
+const (
+	// 默认主键的键名，理论上每个数据模型都应该存在id字段，并且是数据表的主键
+	DEFAULT_PRIMARY_KEY 			= "Id"
+)
+
 func parseModelRows(i interface{}) (map[string] RawDatasetDef, error) {
 	elem := reflect.TypeOf(i).Elem()
 	retElemDef := make(map[string] RawDatasetDef)
@@ -65,12 +70,24 @@ type OrmModel struct {
 	instance			interface{}
 	__tablename__		string
 
-	rows_def 			map[string] RawDatasetDef
-	bUpdateRecord		bool
+	rows_def     		map[string] RawDatasetDef
+	UpdateRecord 		bool
 }
 
 func (model *OrmModel) SetTable(tablename string) {
 	model.__tablename__ = tablename
+}
+
+// 获取模型的主键值，供update操作时使用
+func (model *OrmModel) getPkValue() int64 {
+	model_values := reflect.ValueOf(model.instance).Elem()
+	if model_values.IsValid() {
+		primary_field := model_values.FieldByName(DEFAULT_PRIMARY_KEY)
+		if primary_field.IsValid() {
+			return primary_field.Int()
+		}
+	}
+	return 0
 }
 
 func (model *OrmModel) parseModelInfor() {
@@ -151,13 +168,13 @@ func (model *OrmModel)Query() sql.Rows  {
 	return sql.Rows{}
 }
 
-func (model *OrmModel)Insert() (int64, error) {
+func (model *OrmModel) insert() (int64, error) {
 	reflect_properties, e := model.reflectModelProperties()
 	if e == nil {
 		columns, values, err := model.makeSqlColumnsAndValues(reflect_properties)
 		if err == nil {
 			col_sql := strings.Join(columns, ", ")
-			val_sql := make([]string, len(values)) //strings.Join(values, ",")
+			val_sql := make([]string, len(values))
 			for vi := 0; vi < len(val_sql); vi++ {
 				val_sql[vi] = "?"
 			}
@@ -178,7 +195,26 @@ func (model *OrmModel)Insert() (int64, error) {
 	return 0, errors.New("reflectModelProperties failure!")
 }
 
-func (model *OrmModel)Update() (int64, error) {
+func (model *OrmModel) update() (int64, error) {
+	reflect_properties, e := model.reflectModelProperties()
+	if e == nil {
+		columns, values, err := model.makeSqlColumnsAndValues(reflect_properties)
+		if err == nil {
+			col_sql := make([]string, len(columns))
+			for vi := 0; vi < len(col_sql); vi++ {
+				col_sql[vi] = fmt.Sprintf("%s=?", columns[vi])
+			}
+
+			construct_buf := bytes.Buffer{}
+			construct_buf.WriteString("UPDATE ")
+			construct_buf.WriteString(model.__tablename__)
+			construct_buf.WriteString(" SET ")
+			construct_buf.WriteString(strings.Join(col_sql, ","))
+			construct_buf.WriteString(" WHERE id=" + strconv.FormatInt(model.getPkValue(), 10))
+
+			return model.db_engine.Raw(construct_buf.String()).Exec(values...)
+		}
+	}
 	return 0, nil
 }
 
@@ -188,10 +224,10 @@ func (model *OrmModel)Delete() int64{
 
 func (model *OrmModel)Save() (int64, error) {
 	model.parseModelInfor()
-	if model.bUpdateRecord {
-		fmt.Println("脏数据，做更新操作！")
+	if model.UpdateRecord {
+		return model.update()
 	} else {
-		return model.Insert()
+		return model.insert()
 	}
 
 	return 0, errors.New("Unkown modify operation!")
@@ -268,25 +304,31 @@ func Find(model interface{}, sql string, engine *OrmEngine, ret *[]interface{}, 
 							}
 						}
 					}
+					fieldMethodSetInstance := extractInstance.MethodByName("SetInstance")
+					setInstanceParams := make([]reflect.Value, 1)
+					setInstanceParams[0] = extractInstance
+					if fieldMethodSetInstance.IsValid() {
+						fieldMethodSetInstance.Call(setInstanceParams)
+					}
+
+					fieldMethodSetEngine := extractInstance.MethodByName("SetEngine")
+					setEngineParams := make([]reflect.Value, 1)
+					setEngineParams[0] = reflect.ValueOf(engine)
+					if fieldMethodSetEngine.IsValid() {
+						fieldMethodSetEngine.Call(setEngineParams)
+					}
+
+					new_data_label_field := extractDataset.FieldByName("UpdateRecord")
+					if new_data_label_field.IsValid() && new_data_label_field.CanSet() && new_data_label_field.Type().Kind() == reflect.Bool {
+						new_data_label_field.SetBool(true)
+					}
+
+					*ret = append(*ret, extractInstance.Interface())
 				} else {
 					log.Println(scan_err)
 				}
 
-				fieldMethodSetInstance := extractInstance.MethodByName("SetInstance")
-				setInstanceParams := make([]reflect.Value, 1)
-				setInstanceParams[0] = extractInstance
-				if fieldMethodSetInstance.IsValid() {
-					fieldMethodSetInstance.Call(setInstanceParams)
-				}
 
-				fieldMethodSetEngine := extractInstance.MethodByName("SetEngine")
-				setEngineParams := make([]reflect.Value, 1)
-				setEngineParams[0] = reflect.ValueOf(engine)
-				if fieldMethodSetEngine.IsValid() {
-					fieldMethodSetEngine.Call(setEngineParams)
-				}
-
-				*ret = append(*ret, extractInstance.Interface())
 			}
 
 		} else {
