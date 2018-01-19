@@ -61,6 +61,11 @@ func (engine *OrmEngine) Init() error {
 	}
 }
 
+func (engine *OrmEngine) Close() error {
+	log.Println("close db connection")
+	return engine.database.Close()
+}
+
 /**
 执行原始sql语句
  */
@@ -70,34 +75,34 @@ func (engine *OrmEngine) Raw(sql string) (*OrmEngine) {
 }
 
 /**
- 执行数据库原声语句的update 和 delete 操作
+ 执行数据库原生语句的update 和 delete 操作
 
  */
-func (engine *OrmEngine) Exec(args ...interface{}) int64 {
+func (engine *OrmEngine) Exec(args ...interface{}) (int64, error) {
 	var ret_affected_rows int64
-	result, err := engine.database.Exec(engine.rawSql, args)
+	result, err := engine.database.Exec(engine.rawSql, args...)
 	if err == nil {
 		af_rows, qe := result.RowsAffected()
 		if qe == nil {
 			ret_affected_rows = af_rows
 		}
 	}
-	return ret_affected_rows
+	return ret_affected_rows, err
 }
 
 /**
 执行原生sql语句的插入操作
  */
-func (engine *OrmEngine) Insert(args ...interface{}) int64 {
+func (engine *OrmEngine) Insert(args ...interface{}) (int64, error) {
 	var ret_last_id int64
-	result, err := engine.database.Exec(engine.rawSql, args)
+	result, err := engine.database.Exec(engine.rawSql, args...)
 	if err == nil {
 		last_id, ie := result.LastInsertId()
 		if ie == nil {
 			ret_last_id = last_id
 		}
 	}
-	return ret_last_id
+	return ret_last_id, err
 }
 
 func (engine *OrmEngine) FetchResults(args ...interface{}) (*sql.Rows, error) {

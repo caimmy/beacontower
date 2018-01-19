@@ -20,30 +20,82 @@ package main
 import (
 	"github.com/caimmy/beacontower/orm"
 	"fmt"
+	"log"
 )
 
+type Lotto_User struct {
+	Id			int		`orm:"id" autoincreament:"1"`
+	Name 		string	`orm:"user_name"`
+	Idcard 		string	`orm:"user_weixin"`
+	Phone 		int	`orm:"user_phone"`
+
+	orm.OrmModel
+}
+
 type UserModel struct {
-	Id			int		`orm:"hhh"`
-	Name 		string	`orm:"eee"`
-	Idcard 		string	`orm:"bbb"`
-	Phone 		string	`orm:"abc"`
+	Id			int		`orm:"id"`
+	Name 		string	`orm:"user_name"`
+	Idcard 		string	`orm:"user_weixin"`
+	Phone 		string	`orm:"user_phone"`
 
 	orm.OrmModel
 }
 
 func main() {
-	engine, ok := orm.NewEngine("127.0.0.1", 3306, "root", "abcd1234", "gov_info",
+	engine, ok := orm.NewEngine("127.0.0.1", 3306, "kefu", "abcd1234", "lotto",
 		orm.ENGINE_VER_MYSQL, orm.ENGINE_CODING_UTF8)
+	defer func () {
+		engine.Close()
+	}()
 	if ok {
-		ret_set := make([]interface{}, 0)
-		m := orm.Find(&UserModel{}, "SELECT * FROM mgr_user", engine, &ret_set, nil)
-		e := ret_set[0].(UserModel)
-		fmt.Println("*****************************")
-		fmt.Println(e)
-		if m {
-			fmt.Println("ok")
+		//InsertdateT(engine)
+		//FindT(engine)
+		DeleteT(engine)
+	}
+}
+
+func InsertdateT(engine *orm.OrmEngine) {
+	tU := Lotto_User{Name: "刘德华", Idcard:"555555555555", Phone:1234567}
+	tU.SetEngine(engine)
+	tU.SetInstance(&tU)
+
+	last_id, err := tU.Save()
+	if err == nil {
+		log.Printf("last id got : %d", last_id)
+	} else {
+		log.Println(err)
+	}
+}
+
+func DeleteT(engine *orm.OrmEngine) {
+	ret_set := make([]interface{}, 0)
+	vvv := orm.Find(&Lotto_User{}, "SELECT * FROM lotto_user WHERE id=?", engine, &ret_set, 5)
+	log.Println(vvv)
+	if len(ret_set) == 1 {
+		m := ret_set[0].(*Lotto_User)
+		del_id, e := m.Delete()
+		log.Println(e)
+		log.Println(del_id)
+	}
+}
+
+func FindT(engine *orm.OrmEngine) {
+	ret_set := make([]interface{}, 0)
+
+	vvv := orm.Find(&Lotto_User{}, "SELECT * FROM lotto_user WHERE id=?", engine, &ret_set, 5)
+	log.Println(vvv)
+	if len(ret_set) > 0 {
+		m := ret_set[0].(*Lotto_User)
+		fmt.Println(m)
+		fmt.Println(m.Name)
+		fmt.Println("----------------------------------")
+		m.Name = m.Name + "<<<"
+		affect_cols, err := m.Save()
+		if err == nil {
+			log.Println("updated : ", affect_cols)
+		} else {
+			log.Println(err)
 		}
 	}
-
 
 }
