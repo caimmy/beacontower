@@ -25,7 +25,7 @@ import (
 	"flag"
 )
 
-var addr = flag.String("addr", "localhost:8080", "http service address")
+var addr = flag.String("addr", "localhost:18080", "http service address")
 
 func main()  {
 	fmt.Println("bt.io started!")
