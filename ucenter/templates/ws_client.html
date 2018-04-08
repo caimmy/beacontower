@@ -1,0 +1,74 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html" />
+    <!-- <script src="//cdn.rawgit.com/dcodeIO/protobuf.js/6.X.X/dist/protobuf.js"></script> -->
+    <meta name="author" content="https://www.baidu.com" />
+    <script src="static/jquery.js"></script>
+    <script src="protobuf.min.js"></script>
+    <title>websocket test</title>
+    <script>
+        var socket;
+        var SearchRequest;
+        function Connect(){
+            try{
+                socket=new WebSocket('ws://127.0.0.1:8000/echo');
+            }catch(e){
+                alert('error');
+                return;
+            }
+            socket.onopen = sOpen;
+            socket.onerror = sError;
+            socket.onmessage= sMessage;
+            socket.onclose= sClose;
+        }
+        function sOpen(){
+            alert('connect success!');
+        }
+        function sError(e){
+            alert("error " + e);
+            console.log(e);
+        }
+        function sMessage(msg){
+            console.log(msg);
+            alert('server says:' + msg.data);
+        }
+        function sClose(e){
+            console.log(e);
+            alert("connect closed:" + e.code);
+        }
+        function Send(){
+            var raw_msg = document.getElementById("msg").value;
+            var message = SearchRequest.create({query:raw_msg, page_number:3, result_per_page:9527, res:"mengjiangxiong"});
+            var encodedMsg = SearchRequest.encode(message).finish();
+            socket.send(encodedMsg);
+        }
+        function Close(){
+            socket.close(3000);
+        }
+        console.log(protobuf);
+        protobuf.load("test.proto", function (err, root) {
+            console.log("---------------------");
+            console.log(err);
+            console.log(root);
+            if (err) throw err;
+            SearchRequest = root.lookup("ucenter.SearchRequest");
+            console.log(SearchRequest);
+
+            var message = SearchRequest.create({query:"aabbccdd", page_number:3, result_per_page:9527, res:"mengjiangxiong"});
+            var encodedObj = SearchRequest.encode(message).finish();
+            console.log(encodedObj);
+
+        })
+    </script>
+</head>
+
+<body>
+<input id="msg" type="text">
+<button id="connect" onclick="Connect();">Connect</button>
+<button id="send" onclick="Send();">Send</button>
+<button id="close" onclick="Close();">Close</button>
+
+</body>
+
+</html>

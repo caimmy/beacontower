@@ -11,6 +11,11 @@ const (
 	nsq_lookup = "127.0.0.1:4161"
 )
 
+var (
+	exit_cnt = 0
+	consumer_server *nsq.Consumer
+)
+
 type ConsumerT struct{}
 
 func publishMsg(msg string) {
@@ -21,28 +26,35 @@ func publishMsg(msg string) {
 	}
 }
 
-func (*ConsumerT) HandleMessage(msg *nsq.Message) error {
-	fmt.Println("receive: ", msg.NSQDAddress, "message: ", string(msg.Body))
+func (c *ConsumerT) HandleMessage(msg *nsq.Message) error {
+	recv_msg := string(msg.Body)
+	fmt.Println("receive: ", msg.NSQDAddress, "message: ", recv_msg)
+	exit_cnt += 1
+	fmt.Printf("recved %d times\n", exit_cnt)
+	if exit_cnt == 3 {
+		consumer_server.StopChan <- 9527
+	}
 	return nil
 }
 
 func consumeMsg(topic string, channel string) {
 	cfg := nsq.NewConfig()
 	cfg.LookupdPollInterval = time.Second
-	c, err := nsq.NewConsumer(topic, channel, cfg)
+	var err error
+	consumer_server, err = nsq.NewConsumer(topic, channel, cfg)
 	if (err == nil) {
-		c.SetLogger(nil, 0)
-		c.AddHandler(&ConsumerT{})
+		consumer_server.SetLogger(nil, 0)
+		consumer_server.AddHandler(&ConsumerT{})
 	}
-	if err = c.ConnectToNSQLookupd(nsq_lookup); err != nil {
+	if err = consumer_server.ConnectToNSQLookupd(nsq_lookup); err != nil {
 		panic(err)
 	}
+	m := <- consumer_server.StopChan
+	fmt.Println(m)
+	fmt.Println("consumer exited!")
 }
 
 func main() {
 	//publishMsg("hello fouth")
-	consumeMsg("test_abc", "dododo")
-	for {
-		time.Sleep(time.Second * 10)
-	}
+	consumeMsg("nsq_demo", "dododo")
 }
