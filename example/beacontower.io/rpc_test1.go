@@ -12,39 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// date     : 2018/1/5 11:17
+// date     : 2018/4/10 17:54
 // author   : caimmy@hotmail.com
 
-package wservice
+package main
 
 import (
-	"net/http"
-	"github.com/gorilla/websocket"
-	"log"
+	"net/rpc"
+	"github.com/gpmgo/gopm/modules/log"
+	"github.com/caimmy/beacontower/rpcdatas"
+	"fmt"
 )
 
-var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
-	return true
-}, EnableCompression: true}
-
-func EchoServer(w http.ResponseWriter, r *http.Request)  {
-	c, err := upgrader.Upgrade(w, r, nil)
+func main() {
+	client, err := rpc.DialHTTP("tcp", "127.0.0.1:1234")
 	if err != nil {
-		log.Print("upgrade: ", err)
+		log.Fatal("dialing: ", err)
 	}
-	defer c.Close()
-	for {
-		mt, message, err := c.ReadMessage()
-		log.Println("read ", mt, message)
-		if err != nil {
-			log.Println("read error: ", err)
-			break
-		}
-		log.Println("recv: ", string(message))
-		err = c.WriteMessage(mt, message)
-		if err != nil {
-			log.Println("write: ", err)
-			break
-		}
+	PushData := &rpcdatas.MsgInjection{"abcd", []byte("lskjdflkasdjflasdfasdf")}
+	var reply int
+	err = client.Call("MessageChannel.PushData", PushData, &reply)
+	if err != nil {
+		log.Fatal("push data error : ", err)
 	}
+	fmt.Println("result is : ", reply)
 }

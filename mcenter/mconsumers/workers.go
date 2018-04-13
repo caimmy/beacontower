@@ -12,27 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// date     : 2018/1/5 11:13
+// date     : 2018/4/12 17:59
 // author   : caimmy@hotmail.com
 
-package main
+package mconsumers
 
 import (
+	"github.com/nsqio/go-nsq"
 	"fmt"
-	"log"
-	"net/http"
-	"github.com/caimmy/beacontower/bt.io/wservice"
-	"flag"
 )
 
-var addr = flag.String("addr", "localhost:18080", "http service address")
+type WebsocketMsgWorker struct{}
 
-func main()  {
-	fmt.Println("bt.io started!")
-	log.SetFlags(0)
-
-	http.HandleFunc("/echo", wservice.EchoServer)
-	log.Fatal(http.ListenAndServe(*addr, nil))
-
+func (c *WebsocketMsgWorker) HandleMessage(msg *nsq.Message) error {
+	fmt.Println(string(msg.Body))
+	return nil
 }
-

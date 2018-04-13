@@ -1,0 +1,34 @@
+syntax = "proto3";
+package beacontower;
+
+// 基础通信过程中的消息信息载体
+message ComMessage {
+    int32       version     = 1;
+    string      msgId       = 2;
+    string      msgType     = 3;
+    int64       timestamp   = 4;
+    string      payload     = 5;
+}
+
+
+// 直接消息
+message DirectMessage {
+    string      app_id      = 1;
+    string      app_key     = 2;
+    string      app_secret  = 3;
+    string      fromAccount = 4;
+    string      fromResource= 5;
+    ComMessage  msg         = 6;
+}
+
+
+// 广播消息
+message BroadcaseMessage {
+    string      app_id      = 1;
+    string      app_key     = 2;
+    string      app_secret  = 3;
+    string      fromAccount = 4;
+    string      fromResource= 5;
+    string      group_id    = 6;            // 消息群发组的编号
+    ComMessage  msg         = 7;
+}

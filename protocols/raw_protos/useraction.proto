@@ -1,0 +1,10 @@
+syntax = "proto3";
+package beacontower;
+
+// 承载用户行为的消息
+message UserAction {
+    string      app_id      = 1;
+    string      user_id     = 2;
+    string      action      = 3;
+    int64       timestamp   = 4;
+}
